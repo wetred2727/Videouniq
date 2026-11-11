@@ -9,11 +9,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,57 +44,35 @@ class MainActivity : ComponentActivity() {
         var selected by remember { mutableStateOf<List<Uri>>(emptyList()) }
         var status by remember { mutableStateOf("Додай відео, щоб почати") }
         var busy by remember { mutableStateOf(false) }
-        var progress by remember { mutableStateOf(0f) }
-        var current by remember { mutableIntStateOf(0) }
-        var completed by remember { mutableIntStateOf(0) }
+        var progress by remember { mutableFloatStateOf(0f) }
 
         val picker = rememberLauncherForActivityResult(
             ActivityResultContracts.GetMultipleContents()
         ) { uris ->
-            selected = uris
-            status = if (uris.isEmpty()) "Відео не вибрано" else "Вибрано відео: ${uris.size}"
-            progress = 0f
+            if (!busy) {
+                selected = uris
+                status = if (uris.isEmpty()) "Відео не вибрано" else "Вибрано відео: ${uris.size}"
+                progress = 0f
+            }
         }
 
         fun startBatch() {
             if (selected.isEmpty() || busy) return
+            val batch = selected.toList()
             busy = true
-            current = 0
-            completed = 0
+            progress = 0f
+            status = "Підготовка пакетної обробки…"
+
             processNext(
-                selected = selected,
+                selected = batch,
                 index = 0,
+                successful = 0,
                 onStatus = { status = it },
                 onProgress = { progress = it },
-                onDone = {
-                    completed++
-                    current = completed
-                    if (completed >= selected.size) {
-                        busy = false
-                        status = "Готово! Оброблено: $completed"
-                        progress = 1f
-                    }
-                },
-                onError = { message ->
-                    completed++
-                    current = completed
-                    status = message
-                    if (completed >= selected.size) {
-                        busy = false
-                    } else {
-                        processNext(selected, completed, { status = it }, { progress = it }, {
-                            completed++
-                            current = completed
-                            if (completed >= selected.size) {
-                                busy = false
-                                status = "Завершено. Успішно: ${completed - 1} з ${selected.size}"
-                            }
-                        }, { err ->
-                            status = err
-                            completed++
-                            if (completed >= selected.size) busy = false
-                        })
-                    }
+                onFinished = { successCount ->
+                    busy = false
+                    progress = 1f
+                    status = "Завершено. Успішно: $successCount з ${batch.size}"
                 }
             )
         }
@@ -109,38 +85,78 @@ class MainActivity : ComponentActivity() {
             )
         ) {
             Surface(Modifier.fillMaxSize(), color = Color(0xFF101116)) {
-                Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Column(
+                    Modifier.fillMaxSize().padding(22.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
                     Text("VIDEOUNIQ", color = Color.White, fontSize = 27.sp)
                     Text("Автоматична обробка відео", color = Color(0xFFAAAABD))
+
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1D27))) {
-                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             Text("ТВОЇ ВІДЕО", color = Color.White)
-                            Text("Вибери один або декілька роликів для пакетного експорту.", color = Color(0xFFB9B9C8))
-                            Button(onClick = { picker.launch("video/*") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "Вибери один або декілька роликів для пакетного експорту.",
+                                color = Color(0xFFB9B9C8)
+                            )
+                            Button(
+                                onClick = { picker.launch("video/*") },
+                                enabled = !busy,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 Text("ВИБРАТИ ВІДЕО")
                             }
                             Text("Вибрано: ${selected.size}", color = Color(0xFFB9B9C8))
                         }
                     }
+
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1D27))) {
-                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             Text("РЕЖИМ AUTO", color = Color.White)
-                            Text("Перекодування відео у новий MP4-файл зі збереженням візуального вмісту та звуку. Оригінали не змінюються.", color = Color(0xFFB9B9C8))
-                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                            Text(
+                                "Перекодування у нові MP4-файли. Оригінали залишаються без змін.",
+                                color = Color(0xFFB9B9C8)
+                            )
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                             Text(status, color = Color.White)
-                            Button(onClick = { startBatch() }, enabled = selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = { startBatch() },
+                                enabled = selected.isNotEmpty() && !busy,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 Text(if (busy) "ОБРОБКА…" else "ПОЧАТИ ОБРОБКУ")
                             }
                         }
                     }
-                    Text("ФАЙЛИ ДОДАНО", color = Color(0xFFAAAABD))
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+
+                    Text("ВИБРАНІ ФАЙЛИ", color = Color(0xFFAAAABD))
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         items(selected) { uri ->
-                            Text(uri.lastPathSegment ?: "Відеофайл", color = Color.White, maxLines = 1)
+                            Text(
+                                uri.lastPathSegment ?: "Відеофайл",
+                                color = Color.White,
+                                maxLines = 1
+                            )
                         }
                     }
-                    Spacer(Modifier.weight(1f))
-                    Text("VideoUniq 1.0 • Обробка на пристрої", color = Color(0xFF777887), fontSize = 12.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Text(
+                        "VideoUniq 1.0 • Обробка на пристрої",
+                        color = Color(0xFF777887),
+                        fontSize = 12.sp,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
                 }
             }
         }
@@ -149,62 +165,105 @@ class MainActivity : ComponentActivity() {
     private fun processNext(
         selected: List<Uri>,
         index: Int,
+        successful: Int,
         onStatus: (String) -> Unit,
         onProgress: (Float) -> Unit,
-        onDone: () -> Unit,
-        onError: (String) -> Unit
+        onFinished: (Int) -> Unit
     ) {
-        if (index >= selected.size) return
-        val uri = selected[index]
-        val dir = File(cacheDir, "exports").apply { mkdirs() }
-        val output = File(dir, "videouniq_${System.currentTimeMillis()}_$index.mp4")
+        if (index >= selected.size) {
+            onFinished(successful)
+            return
+        }
+
+        val outputDirectory = File(cacheDir, "exports").apply { mkdirs() }
+        val output = File(
+            outputDirectory,
+            "videouniq_${System.currentTimeMillis()}_$index.mp4"
+        )
         onStatus("Обробка ${index + 1} з ${selected.size}…")
+
+        fun finishCurrent(success: Boolean, errorMessage: String? = null) {
+            output.delete()
+            if (errorMessage != null) onStatus(errorMessage)
+            val nextSuccessful = successful + if (success) 1 else 0
+            onProgress((index + 1).toFloat() / selected.size)
+            processNext(
+                selected = selected,
+                index = index + 1,
+                successful = nextSuccessful,
+                onStatus = onStatus,
+                onProgress = onProgress,
+                onFinished = onFinished
+            )
+        }
+
         val listener = object : Transformer.Listener {
             override fun onCompleted(composition: Composition, exportResult: ExportResult) {
                 try {
-                    saveToGallery(output)
-                    output.delete()
-                    onProgress((index + 1).toFloat() / selected.size)
-                    onDone()
-                    if (index + 1 < selected.size) {
-                        processNext(selected, index + 1, onStatus, onProgress, onDone, onError)
-                    }
+                    saveToGallery(output, index)
+                    finishCurrent(
+                        success = true,
+                        errorMessage = "Збережено відео ${index + 1} з ${selected.size}"
+                    )
                 } catch (e: Exception) {
-                    onError("Не вдалося зберегти файл: ${e.message}")
+                    finishCurrent(
+                        success = false,
+                        errorMessage = "Не вдалося зберегти відео ${index + 1}: ${e.message ?: "невідома помилка"}"
+                    )
                 }
             }
 
-            override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
-                output.delete()
-                onError("Помилка відео ${index + 1}: ${exportException.message}")
+            override fun onError(
+                composition: Composition,
+                exportResult: ExportResult,
+                exportException: ExportException
+            ) {
+                finishCurrent(
+                    success = false,
+                    errorMessage = "Помилка відео ${index + 1}: ${exportException.message ?: "експорт не вдався"}"
+                )
             }
         }
+
         try {
             transformer = Transformer.Builder(this).addListener(listener).build()
-            transformer?.start(EditedMediaItem.Builder(MediaItem.fromUri(uri)).build(), output.absolutePath)
+            transformer?.start(
+                EditedMediaItem.Builder(MediaItem.fromUri(selected[index])).build(),
+                output.absolutePath
+            )
         } catch (e: Exception) {
-            output.delete()
-            onError("Не вдалося почати обробку: ${e.message}")
+            finishCurrent(
+                success = false,
+                errorMessage = "Не вдалося почати обробку відео ${index + 1}: ${e.message ?: "невідома помилка"}"
+            )
         }
     }
 
-    private fun saveToGallery(file: File) {
-        val name = "VideoUniq_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.mp4"
+    private fun saveToGallery(file: File, index: Int) {
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
+        val name = "VideoUniq_${timestamp}_${index + 1}.mp4"
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, name)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/VideoUniq")
+            put(
+                MediaStore.Video.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_MOVIES + "/VideoUniq"
+            )
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
+
         val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
             ?: throw IllegalStateException("Не вдалося створити файл у галереї")
+
         try {
-            contentResolver.openOutputStream(uri)?.use { out ->
-                FileInputStream(file).use { input -> input.copyTo(out) }
+            contentResolver.openOutputStream(uri)?.use { output ->
+                FileInputStream(file).use { input -> input.copyTo(output) }
             } ?: throw IllegalStateException("Не вдалося записати відео")
-            values.clear()
-            values.put(MediaStore.Video.Media.IS_PENDING, 0)
-            contentResolver.update(uri, values, null, null)
+
+            val publishedValues = ContentValues().apply {
+                put(MediaStore.Video.Media.IS_PENDING, 0)
+            }
+            contentResolver.update(uri, publishedValues, null, null)
         } catch (e: Exception) {
             contentResolver.delete(uri, null, null)
             throw e
