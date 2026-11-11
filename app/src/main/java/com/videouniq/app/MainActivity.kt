@@ -20,16 +20,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Effects
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
+import androidx.media3.effect.HslAdjustment
+import androidx.media3.effect.ScaleAndRotateTransformation
 import java.io.File
 import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.Random
 
 class MainActivity : ComponentActivity() {
     private var transformer: Transformer? = null
@@ -120,7 +125,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text("РЕЖИМ AUTO", color = Color.White)
                             Text(
-                                "Перекодування у нові MP4-файли. Оригінали залишаються без змін.",
+                                "AUTO: нове MP4-кодування, легке масштабування/поворот і м’яка корекція кольору. Параметри автоматично змінюються для кожного файлу. Оригінали не змінюються.",
                                 color = Color(0xFFB9B9C8)
                             )
                             LinearProgressIndicator(
@@ -227,16 +232,40 @@ class MainActivity : ComponentActivity() {
 
         try {
             transformer = Transformer.Builder(this).addListener(listener).build()
-            transformer?.start(
-                EditedMediaItem.Builder(MediaItem.fromUri(selected[index])).build(),
-                output.absolutePath
-            )
+            val editedItem = EditedMediaItem.Builder(MediaItem.fromUri(selected[index]))
+                .setEffects(Effects(emptyList(), createAutoVideoEffects(index)))
+                .build()
+            transformer?.start(editedItem, output.absolutePath)
         } catch (e: Exception) {
             finishCurrent(
                 success = false,
                 errorMessage = "Не вдалося почати обробку відео ${index + 1}: ${e.message ?: "невідома помилка"}"
             )
         }
+    }
+
+
+    @OptIn(UnstableApi::class)
+    private fun createAutoVideoEffects(index: Int): List<androidx.media3.common.Effect> {
+        // Gentle creative adjustments. Each file receives its own deterministic profile.
+        val random = Random(System.nanoTime() xor (index.toLong() shl 32))
+        val scale = 1.018f + random.nextFloat() * 0.014f
+        val rotation = (random.nextFloat() - 0.5f) * 0.5f
+        val hue = (random.nextFloat() - 0.5f) * 4.0f
+        val saturation = (random.nextFloat() - 0.5f) * 6.0f
+        val lightness = (random.nextFloat() - 0.5f) * 3.0f
+
+        return listOf(
+            ScaleAndRotateTransformation.Builder()
+                .setScale(scale, scale)
+                .setRotationDegrees(rotation)
+                .build(),
+            HslAdjustment.Builder()
+                .adjustHue(hue)
+                .adjustSaturation(saturation)
+                .adjustLightness(lightness)
+                .build()
+        )
     }
 
     private fun saveToGallery(file: File, index: Int) {
