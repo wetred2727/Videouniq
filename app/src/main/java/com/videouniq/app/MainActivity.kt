@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text("РЕЖИМ AUTO", color = Color.White)
                             Text(
-                                "Кожен ролик отримує власні налаштування кадру та кольору. Відео й аудіо перекодовуються в MP4, оригінал не змінюється.",
+                                "Кожен ролик отримує власні налаштування кадру та кольору. Відео експортується в новий MP4, звук зберігається, оригінал не змінюється.",
                                 color = Color(0xFFB9B9C8)
                             )
                             Text("СИЛА ОБРОБКИ: ${(intensity * 100).toInt()}%", color = Color.White)
@@ -164,7 +165,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         items(selected) { uri ->
                             Text(
-                                uri.lastPathSegment ?: "Відеофайл",
+                                getDisplayName(uri),
                                 color = Color.White,
                                 maxLines = 1
                             )
@@ -283,6 +284,16 @@ class MainActivity : ComponentActivity() {
                 .adjustLightness(lightness)
                 .build()
         )
+    }
+
+    private fun getDisplayName(uri: Uri): String {
+        val projection = arrayOf(OpenableColumns.DISPLAY_NAME)
+        return contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (column >= 0) cursor.getString(column) else null
+            } else null
+        } ?: "Відеофайл"
     }
 
     private fun saveToGallery(file: File, index: Int) {
