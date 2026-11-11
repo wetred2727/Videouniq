@@ -57,6 +57,14 @@ jobs:
           grep -q "targetSdkVersion:'34'" apk-metadata.txt
           sha256sum "$APK"
 
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoUniq-Android-APK
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Install and launch APK on Android 13 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
