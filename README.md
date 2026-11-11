@@ -1,17 +1,23 @@
 # VideoUniq
 
-Android app for batch video processing and exporting new MP4 files to the device gallery.
+Android app for local batch video processing and MP4 export.
 
 ## Automatic processing
 
-- Select multiple videos and process them sequentially in one batch.
-- Re-encode each selected video to a new MP4 file.
-- Apply a mild per-file visual profile: small scale/rotation and HSL color adjustments.
-- Keep the original source files unchanged.
-- Save completed exports to `Movies/VideoUniq`.
-- Continue the batch if one input file fails.
+- Select multiple videos from the Android media picker.
+- Process the selected files sequentially in one batch.
+- Apply an independently randomized, adjustable-strength profile to each file:
+  - a small crop,
+  - a very small rotation,
+  - mild hue, saturation and lightness adjustments.
+- Re-encode the video and audio into a new MP4 file.
+- Keep the source files unchanged.
+- Save completed exports to the device gallery under `Movies/VideoUniq`.
+- Continue with the next file if one export fails.
 
-The automatic visual adjustments are intended as lightweight creative variations. They do not guarantee that TikTok, Instagram, or any other platform will classify an export as original or bypass duplicate-content systems.
+The intensity slider controls the strength of the visual adjustments. At lower values, the changes are more subtle. At higher values, crop and color changes become more noticeable.
+
+These are creative editing and re-encoding operations. They do not guarantee that TikTok, Instagram, or another service will classify a video as original or bypass duplicate-content detection. Use the app only for videos you have rights to publish.
 
 ## Build
 
