@@ -21,8 +21,12 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Gradle 8.9
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle-8.9-bin.zip
       - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+        run: ./gradle-8.9/bin/gradle --no-daemon assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
