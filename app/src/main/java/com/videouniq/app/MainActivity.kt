@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
         var status by remember { mutableStateOf("Додай відео, щоб почати") }
         var busy by remember { mutableStateOf(false) }
         var progress by remember { mutableFloatStateOf(0f) }
+        var intensity by remember { mutableFloatStateOf(0.65f) }
 
         val picker = rememberLauncherForActivityResult(
             ActivityResultContracts.GetMultipleContents()
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
                 selected = batch,
                 index = 0,
                 successful = 0,
+                intensity = intensity,
                 onStatus = { status = it },
                 onProgress = { progress = it },
                 onFinished = { successCount ->
@@ -125,9 +127,17 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text("РЕЖИМ AUTO", color = Color.White)
                             Text(
-                                "AUTO: нове MP4-кодування, легке масштабування/поворот і м’яка корекція кольору. Параметри автоматично змінюються для кожного файлу. Оригінали не змінюються.",
+                                "Кожен ролик отримує власні налаштування кадру та кольору. Відео й аудіо перекодовуються в MP4, оригінал не змінюється.",
                                 color = Color(0xFFB9B9C8)
                             )
+                            Text("СИЛА ОБРОБКИ: ${(intensity * 100).toInt()}%", color = Color.White)
+                            Slider(
+                                value = intensity,
+                                onValueChange = { intensity = it },
+                                valueRange = 0.2f..1f,
+                                enabled = !busy
+                            )
+                            Text("Нижче — делікатні зміни. Вище — помітніші зміни кадру та кольору.", color = Color(0xFFB9B9C8), fontSize = 12.sp)
                             LinearProgressIndicator(
                                 progress = { progress },
                                 modifier = Modifier.fillMaxWidth()
@@ -143,7 +153,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    Text("ВИБРАНІ ФАЙЛИ", color = Color(0xFFAAAABD))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text("ВИБРАНІ ФАЙЛИ", color = Color(0xFFAAAABD))
+                        TextButton(onClick = { if (!busy) { selected = emptyList(); status = "Додай відео, щоб почати"; progress = 0f } }, enabled = !busy && selected.isNotEmpty()) { Text("Очистити") }
+                    }
                     LazyColumn(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -157,7 +170,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     Text(
-                        "VideoUniq 1.0 • Обробка на пристрої",
+                        "VideoUniq 1.2 • Обробка на пристрої",
                         color = Color(0xFF777887),
                         fontSize = 12.sp,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -172,6 +185,7 @@ class MainActivity : ComponentActivity() {
         selected: List<Uri>,
         index: Int,
         successful: Int,
+        intensity: Float,
         onStatus: (String) -> Unit,
         onProgress: (Float) -> Unit,
         onFinished: (Int) -> Unit
@@ -197,6 +211,7 @@ class MainActivity : ComponentActivity() {
                 selected = selected,
                 index = index + 1,
                 successful = nextSuccessful,
+                intensity = intensity,
                 onStatus = onStatus,
                 onProgress = onProgress,
                 onFinished = onFinished
@@ -234,7 +249,7 @@ class MainActivity : ComponentActivity() {
         try {
             transformer = Transformer.Builder(this).addListener(listener).build()
             val editedItem = EditedMediaItem.Builder(MediaItem.fromUri(selected[index]))
-                .setEffects(Effects(emptyList(), createAutoVideoEffects(index)))
+                .setEffects(Effects(emptyList(), createAutoVideoEffects(index, intensity)))
                 .build()
             transformer?.start(editedItem, output.absolutePath)
         } catch (e: Exception) {
@@ -247,14 +262,14 @@ class MainActivity : ComponentActivity() {
 
 
     @OptIn(UnstableApi::class)
-    private fun createAutoVideoEffects(index: Int): List<androidx.media3.common.Effect> {
+    private fun createAutoVideoEffects(index: Int, intensity: Float): List<androidx.media3.common.Effect> {
         // Gentle creative adjustments. Each file receives its own deterministic profile.
         val random = Random(System.nanoTime() xor (index.toLong() shl 32))
-        val scale = 1.018f + random.nextFloat() * 0.014f
-        val rotation = (random.nextFloat() - 0.5f) * 0.5f
-        val hue = (random.nextFloat() - 0.5f) * 4.0f
-        val saturation = (random.nextFloat() - 0.5f) * 6.0f
-        val lightness = (random.nextFloat() - 0.5f) * 3.0f
+        val scale = 1.0f + intensity * (0.018f + random.nextFloat() * 0.022f)
+        val rotation = (random.nextFloat() - 0.5f) * intensity * 1.2f
+        val hue = (random.nextFloat() - 0.5f) * intensity * 12.0f
+        val saturation = (random.nextFloat() - 0.5f) * intensity * 18.0f
+        val lightness = (random.nextFloat() - 0.5f) * intensity * 8.0f
 
         return listOf(
             ScaleAndRotateTransformation.Builder()
