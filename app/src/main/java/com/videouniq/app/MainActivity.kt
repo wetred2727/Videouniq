@@ -167,6 +167,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(UnstableApi::class)
     private fun processNext(
         selected: List<Uri>,
         index: Int,
