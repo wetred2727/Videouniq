@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -41,18 +41,35 @@ jobs:
           echo "Using sdkmanager: $SDKMANAGER"
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null
-          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER" "platforms;android-35" "platforms;android-33" "build-tools;35.0.0" "system-images;android-33;google_apis;x86_64"
 
       - name: Build signed release APK
         run: gradle --no-daemon clean assembleRelease
 
-      - name: Verify APK signature and package metadata
+      - name: Verify APK signature, package and SDK requirements
         run: |
           APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 8
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee apk-metadata.txt
+          grep -q "package: name='com.videouniq.mobile'" apk-metadata.txt
+          grep -q "sdkVersion:'23'" apk-metadata.txt
+          grep -q "targetSdkVersion:'34'" apk-metadata.txt
           sha256sum "$APK"
+
+      - name: Install and launch APK on Android 13 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb install -r app/build/outputs/apk/release/app-release.apk
+            adb shell monkey -p com.videouniq.mobile 1
+            sleep 5
+            adb shell dumpsys activity activities | grep -q 'com.videouniq.mobile'
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
