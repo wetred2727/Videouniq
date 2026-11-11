@@ -28,6 +28,7 @@ import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
 import androidx.media3.effect.HslAdjustment
+import androidx.media3.effect.Crop
 import androidx.media3.effect.ScaleAndRotateTransformation
 import java.io.File
 import java.io.FileInputStream
@@ -170,7 +171,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     Text(
-                        "VideoUniq 1.2 • Обробка на пристрої",
+                        "VideoUniq 1.2.0 • Обробка на пристрої",
                         color = Color(0xFF777887),
                         fontSize = 12.sp,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -265,15 +266,15 @@ class MainActivity : ComponentActivity() {
     private fun createAutoVideoEffects(index: Int, intensity: Float): List<androidx.media3.common.Effect> {
         // Gentle creative adjustments. Each file receives its own deterministic profile.
         val random = Random(System.nanoTime() xor (index.toLong() shl 32))
-        val scale = 1.0f + intensity * (0.018f + random.nextFloat() * 0.022f)
-        val rotation = (random.nextFloat() - 0.5f) * intensity * 1.2f
+        val crop = random.nextFloat() * intensity * 0.025f
+        val rotation = (random.nextFloat() - 0.5f) * intensity * 0.8f
         val hue = (random.nextFloat() - 0.5f) * intensity * 12.0f
         val saturation = (random.nextFloat() - 0.5f) * intensity * 18.0f
         val lightness = (random.nextFloat() - 0.5f) * intensity * 8.0f
 
         return listOf(
+            Crop(-1f + crop, 1f - crop, -1f + crop, 1f - crop),
             ScaleAndRotateTransformation.Builder()
-                .setScale(scale, scale)
                 .setRotationDegrees(rotation)
                 .build(),
             HslAdjustment.Builder()
