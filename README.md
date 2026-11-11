@@ -10,7 +10,7 @@ Android app for local batch video processing and MP4 export.
   - a small crop,
   - a very small rotation,
   - mild hue, saturation and lightness adjustments.
-- Re-encode the video and audio into a new MP4 file.
+- Export a newly encoded MP4 video while preserving the source audio track where supported.
 - Keep the source files unchanged.
 - Save completed exports to the device gallery under `Movies/VideoUniq`.
 - Continue with the next file if one export fails.
