@@ -6,7 +6,9 @@
         android:label="VideoUniq"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity
+            android:name="com.videouniq.app.MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
